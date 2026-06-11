@@ -1,5 +1,6 @@
 import StatCard from "../components/StatCard";
 import Card from "../components/Card";
+import SeverityBadge from "../components/SeverityBadge";
 
 import {
   BarChart,
@@ -50,28 +51,6 @@ const topVendors = [
   { name: "Linux",     count: 2020 },
   { name: "Oracle",    count: 1557 },
 ];
-
-// ── HELPER: SeverityBadge ────────────────────────────────────
-// A small inline component — just for this file, no need for its own file.
-// Returns a colored pill based on the severity string.
-function SeverityBadge({ severity }) {
-  // Map each severity to a Tailwind class combo
-  const colors = {
-    Critical: "bg-red-950  text-red-400",
-    High:     "bg-orange-950 text-orange-400",
-    Medium:   "bg-yellow-950 text-yellow-400",
-    Low:      "bg-blue-950  text-blue-400",
-  };
-
-  // Fall back to gray if severity is something unexpected
-  const cls = colors[severity] ?? "bg-slate-700 text-slate-300";
-
-  return (
-    <span className={`text-xs font-medium px-2 py-0.5 rounded ${cls}`}>
-      {severity}
-    </span>
-  );
-}
 
 // ── HELPER: VendorBar ────────────────────────────────────────
 // A simple horizontal bar row used in Top Vendors.
