@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import PieChart            from "../components/charts/PieChart";
-import HorizontalBarChart  from "../components/charts/HorizonralBarChart";
+import HorizontalBarChart  from "../components/charts/HorizontalBarChart";
 import Card                from "../components/Card";
-import { getAnalytics }    from "../services/api";
+import { getAnalytics } from "../services/analyticsService";
 
 // ── MOCK DATA ────────────────────────────────────────────────
 // Shape matches exactly what your FastAPI /api/analytics should return.

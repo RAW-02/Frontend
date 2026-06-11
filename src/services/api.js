@@ -1,36 +1,69 @@
 import axios from "axios";
 
-// Create a custom Axios instance.
-// "instance" is just a pre-configured version of axios.
-// Every call made with this instance automatically prepends the baseURL.
-// So searchVulnerabilities("/api/search?q=log4j") becomes
-// http://localhost:8000/api/search?q=log4j
-const instance = axios.create({
-  // This is where your FastAPI backend is running locally.
-  // When you deploy, you change this one line.
+// baseURL is prepended to every request URL automatically.
+// searchService calling api.get("/api/search") becomes:
+// GET http://localhost:8000/api/search
+const api = axios.create({
   baseURL: "http://localhost:8000",
-  timeout: 10000,
+  timeout: 15000,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-// searchVulnerabilities — calls GET /api/search?q=<query>
-// query: the string the user typed in the search box
-// Returns: the full Axios response object (caller reads .data)
-export const searchVulnerabilities = (query) => {
-  return instance.get("/api/search", {
-    params: { q: query },   // Axios converts this to ?q=<query> in the URL
-  });
-};
+// ── REQUEST INTERCEPTOR ──────────────────────────────────────
+api.interceptors.request.use(
+  (config) => {
+    console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, config.params ?? "");
+    return config;
+  },
 
-// getVulnerabilityById — calls GET /api/vulnerability/<cveId>
-// cveId: string like "CVE-2021-44228"
-// Returns the full vulnerability object from your backend
-export const getVulnerabilityById = (cveId) => {
-  return instance.get(`/api/vulnerability/${cveId}`);
-};
+  (error) => {
+    console.error("[API] Request setup error:", error);
+    return Promise.reject(error);
+  }
+);
 
-// getAnalytics — calls GET /api/analytics
-// Returns all four datasets in one response:
-// { severity_distribution, top_vendors, top_cwes, top_products }
-export const getAnalytics = () => {
-  return instance.get("/api/analytics");
-};
+// ── RESPONSE INTERCEPTOR ─────────────────────────────────────
+api.interceptors.response.use(
+  (response) => {
+    console.log(`[API] ${response.status} ${response.config.url}`);
+    return response;
+  },
+
+  (error) => {
+    if (error.response) {
+      const status = error.response.status;
+      const url    = error.config?.url;
+
+      if (status === 404) {
+        console.warn(`[API] 404 Not found: ${url}`);
+        error.userMessage = "Resource not found.";
+
+      } else if (status === 422) {
+        console.warn(`[API] 422 Validation error: ${url}`);
+        error.userMessage = "Invalid request. Please check your input.";
+
+      } else if (status >= 500) {
+        console.error(`[API] ${status} Server error: ${url}`);
+        error.userMessage = "Server error. Please try again later.";
+
+      } else {
+        console.error(`[API] ${status} Error: ${url}`);
+        error.userMessage = `Request failed with status ${status}.`;
+      }
+
+    } else if (error.code === "ECONNABORTED") {
+      console.error("[API] Request timed out");
+      error.userMessage = "Request timed out. Is the backend running?";
+
+    } else {
+      console.error("[API] Network error:", error.message);
+      error.userMessage = "Cannot reach the server. Is the backend running?";
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+export default api;

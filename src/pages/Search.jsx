@@ -3,11 +3,8 @@ import { useNavigate } from "react-router-dom";
 
 import SeverityBadge from "../components/SeverityBadge";
 import AiSummaryCard  from "../components/AiSummaryCard";
-import { searchVulnerabilities } from "../services/api";
+import { searchVulnerabilities } from "../services/searchService";
 
-// ── HELPER: BooleanIcon ──────────────────────────────────────
-// KEV, PoC, and Exploit columns are true/false values.
-// This renders a green check or a gray dash accordingly.
 function BooleanIcon({ value }) {
   return value
     ? <i className="ti ti-check text-green-400 text-base" aria-label="Yes" />
