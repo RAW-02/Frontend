@@ -1,29 +1,19 @@
-import StatCard from "../components/StatCard";
-import Card from "../components/Card";
-import SeverityBadge from "../components/SeverityBadge";
-import React, { useEffect, useState } from "react";
-
+import { useState, useEffect } from "react";
+import StatCard       from "../components/StatCard";
+import Card           from "../components/Card";
+import SeverityBadge  from "../components/SeverityBadge";
 import {BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, } from "recharts";
-
 import {getStats, getRecentVulnerabilities, getTopVendors, getTrendData,} from "../services/dashboardService";
 
 function VendorBar({ name, count, max }) {
   const widthPct = Math.round((count / max) * 100);
-
   return (
     <div className="flex items-center gap-3 mb-3">
-      <span className="text-xs text-slate-400 w-20 text-right truncate">
-        {name}
-      </span>
+      <span className="text-xs text-slate-400 w-20 text-right truncate">{name}</span>
       <div className="flex-1 bg-slate-900 rounded h-2">
-        <div
-          className="bg-blue-500 h-2 rounded"
-          style={{ width: `${widthPct}%` }}
-        />
+        <div className="bg-blue-500 h-2 rounded" style={{ width: `${widthPct}%` }} />
       </div>
-      <span className="text-xs text-slate-500 w-10">
-        {count.toLocaleString()}
-      </span>
+      <span className="text-xs text-slate-500 w-10">{count.toLocaleString()}</span>
     </div>
   );
 }

@@ -1,45 +1,42 @@
 import { useState, useEffect } from "react";
-import PieChart            from "../components/charts/PieChart";
-import HorizontalBarChart  from "../components/charts/HorizontalBarChart";
-import Card                from "../components/Card";
+import PieChart from "../components/charts/PieChart";
+import HorizontalBarChart from "../components/charts/HorizontalBarChart";
+import Card from "../components/Card";
 import { getAnalytics } from "../services/analyticsService";
 
 // ── MOCK DATA ────────────────────────────────────────────────
-// Shape matches exactly what your FastAPI /api/analytics should return.
-// Delete this and the mock branch in useEffect once your API is ready.
 const MOCK_DATA = {
   severity_distribution: [
     { name: "Critical", value: 8510 },
-    { name: "High",     value: 4860 },
-    { name: "Medium",   value: 4130 },
-    { name: "Low",      value: 3890 },
-    { name: "None",     value: 2920 },
+    { name: "High", value: 4860 },
+    { name: "Medium", value: 4130 },
+    { name: "Low", value: 3890 },
+    { name: "None", value: 2920 },
   ],
   top_vendors: [
     { name: "Microsoft", value: 4210 },
-    { name: "Apple",     value: 3031 },
-    { name: "Google",    value: 2566 },
-    { name: "Linux",     value: 2020 },
-    { name: "Oracle",    value: 1557 },
+    { name: "Apple", value: 3031 },
+    { name: "Google", value: 2566 },
+    { name: "Linux", value: 2020 },
+    { name: "Oracle", value: 1557 },
   ],
   top_cwes: [
-    { name: "CWE-79",  value: 3812 },
-    { name: "CWE-89",  value: 3090 },
+    { name: "CWE-79", value: 3812 },
+    { name: "CWE-89", value: 3090 },
     { name: "CWE-125", value: 2480 },
     { name: "CWE-787", value: 2059 },
-    { name: "CWE-20",  value: 1601 },
+    { name: "CWE-20", value: 1601 },
   ],
   top_products: [
     { name: "Windows", value: 2940 },
-    { name: "iOS",     value: 2175 },
+    { name: "iOS", value: 2175 },
     { name: "Android", value: 1999 },
-    { name: "macOS",   value: 1617 },
-    { name: "Chrome",  value: 1293 },
+    { name: "macOS", value: 1617 },
+    { name: "Chrome", value: 1293 },
   ],
 };
 
 // ── SEVERITY COLORS ──────────────────────────────────────────
-// These match the SeverityBadge colors so the whole app feels consistent
 const SEVERITY_COLORS = ["#f87171", "#fb923c", "#facc15", "#4ade80", "#60a5fa"];
 
 // ── CHART SECTION WRAPPER ────────────────────────────────────
@@ -57,11 +54,9 @@ function ChartCard({ title, icon, loading, children }) {
 
 // ── MAIN COMPONENT ───────────────────────────────────────────
 export default function Analytics() {
-  // One state object holds all four datasets
-  // Starting with null means "not fetched yet"
-  const [data, setData]       = useState(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -80,13 +75,16 @@ export default function Analytics() {
     };
 
     fetchData();
-  }, []); // empty array = run once when the page mounts
+  }, []);
 
   // ── ERROR STATE ──────────────────────────────────────────────
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-3">
-        <i className="ti ti-alert-triangle text-3xl text-red-400" aria-hidden="true" />
+        <i
+          className="ti ti-alert-triangle text-3xl text-red-400"
+          aria-hidden="true"
+        />
         <p className="text-sm text-red-400">{error}</p>
       </div>
     );
@@ -95,7 +93,6 @@ export default function Analytics() {
   // ── RENDER ───────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-
       {/* Page header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-100">Analytics</h1>
@@ -107,7 +104,6 @@ export default function Analytics() {
       {/* ── Row 1: Severity Distribution + Top Vendors ── */}
       {/* Two equal columns on large screens, stacked on mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
         <ChartCard
           title="Severity distribution"
           icon="ti-chart-pie"
@@ -120,48 +116,23 @@ export default function Analytics() {
           />
         </ChartCard>
 
-        <ChartCard
-          title="Top vendors"
-          icon="ti-building"
-          loading={loading}
-        >
+        <ChartCard title="Top vendors" icon="ti-building" loading={loading}>
           {/* Blue bars for vendors */}
-          <HorizontalBarChart
-            data={data?.top_vendors}
-            color="#3b82f6"
-          />
+          <HorizontalBarChart data={data?.top_vendors} color="#3b82f6" />
         </ChartCard>
-
       </div>
 
       {/* ── Row 2: Top CWEs + Top Products ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-        <ChartCard
-          title="Top CWEs"
-          icon="ti-code"
-          loading={loading}
-        >
+        <ChartCard title="Top CWEs" icon="ti-code" loading={loading}>
           {/* Purple bars for CWEs — different color to visually separate from vendors */}
-          <HorizontalBarChart
-            data={data?.top_cwes}
-            color="#a78bfa"
-          />
+          <HorizontalBarChart data={data?.top_cwes} color="#a78bfa" />
         </ChartCard>
 
-        <ChartCard
-          title="Top products"
-          icon="ti-box"
-          loading={loading}
-        >
-          <HorizontalBarChart
-            data={data?.top_products}
-            color="#2dd4bf"
-          />
+        <ChartCard title="Top products" icon="ti-box" loading={loading}>
+          <HorizontalBarChart data={data?.top_products} color="#2dd4bf" />
         </ChartCard>
-
       </div>
-
     </div>
   );
 }
