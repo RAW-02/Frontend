@@ -2,86 +2,105 @@ import { useState } from "react";
 import { NavLink } from "react-router-dom";
 
 const navLinks = [
-  { label: "Home",      path: "/",          icon: "ti-home"        },
-  { label: "Search",    path: "/search",    icon: "ti-search"      },
-  { label: "Analytics", path: "/analytics", icon: "ti-chart-bar"   },
-  { label: "About",     path: "/about",     icon: "ti-info-circle" },
+  { label: "Dashboard", path: "/",        icon: "ti-layout-dashboard" },
+  { label: "Search",    path: "/search",  icon: "ti-search" },
+  { label: "Analytics", path: "/analytics", icon: "ti-chart-bar" },
+  { label: "About",     path: "/about",   icon: "ti-info-circle" },
 ];
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const closeMenu = () => setMenuOpen(false);
 
   const linkClass = ({ isActive }) =>
-    `flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors duration-150 ${
-      isActive
-        ? "bg-blue-900/50 text-blue-400"                            // active: blue highlight
-        : "text-slate-400 hover:text-slate-100 hover:bg-slate-800" // default
-    }`;
+    `relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300
+    ${isActive ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" : "text-slate-400 hover:text-white hover:bg-slate-800/70"}`;
 
   return (
-    <nav className="sticky top-0 z-50 bg-slate-900 border-b border-slate-800">
+    <nav className="sticky top-0 z-50 backdrop-blur-2xl bg-slate-950/80 border-b border-slate-800/80">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="flex h-20 items-center justify-between">
+          {/* Logo */}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-
-        <div className="flex items-center justify-between h-16">
-          <NavLink to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <i className="ti ti-shield-lock text-white text-base" aria-hidden="true" />
+          <NavLink to="/" className="flex items-center gap-4 group">
+            <div
+              className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/20 transition-transform duration-300 group-hover:rotate-6"
+            >
+              <i className="ti ti-shield-lock text-xl text-white" />
             </div>
-            <span className="text-slate-100 font-semibold text-base tracking-tight">
-              UniVulner <span className="text-blue-400">Platform</span>
-            </span>
+
+            <div>
+              <h1 className="font-bold text-lg tracking-tight text-white">
+                UniVulner
+              </h1>
+
+              <p className="text-xs text-slate-500">
+                Threat Intelligence Platform
+              </p>
+            </div>
           </NavLink>
 
-          <div className="hidden md:flex items-center gap-1">
+          {/* Desktop Menu */}
+
+          <div className="hidden lg:flex items-center gap-2">
             {navLinks.map((link) => (
               <NavLink
-                key={link.path}  
+                key={link.path}
                 to={link.path}
-                className={linkClass}  // our function that returns the right classes
-                // "end" on the Home link means it only highlights on exactly "/"
-                // Without this, "/" would also match "/search", "/analytics" etc.
+                className={linkClass}
                 end={link.path === "/"}
               >
-                <i className={`ti ${link.icon} text-base`} aria-hidden="true" />
+                <i className={`ti ${link.icon} text-lg`} />
+
                 {link.label}
               </NavLink>
             ))}
           </div>
 
-          {/* ── HAMBURGER BUTTON (mobile only) ── */}
-          {/* md:hidden = visible only on screens smaller than 768px */}
+          {/* Right Side */}
+
+          <div className="hidden lg:flex items-center gap-4">
+            
+            {/* Live */}
+            <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5">
+              <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs text-emerald-300">Live Feed</span>
+            </div>
+
+            {/* User */}
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-800 text-cyan-400">
+              <i className="ti ti-user text-lg" />
+            </div>
+          </div>
+
+          {/* Mobile */}
           <button
-            className="md:hidden text-slate-400 hover:text-slate-100 p-2 rounded-md"
-            onClick={() => setMenuOpen(!menuOpen)} // toggle open/closed
-            aria-label="Toggle navigation menu"    // accessibility for screen readers
+            className="lg:hidden rounded-xl border border-slate-800 bg-slate-900 p-2 text-slate-300"
+            onClick={() => setMenuOpen(!menuOpen)}
           >
-            {/* Show X icon when menu is open, hamburger icon when closed */}
             <i className={`ti ${menuOpen ? "ti-x" : "ti-menu-2"} text-xl`} />
           </button>
-
         </div>
       </div>
 
-      {/* ── MOBILE DROPDOWN MENU ── */}
+      {/* Mobile Menu */}
       {menuOpen && (
-        <div className="md:hidden border-t border-slate-800 bg-slate-900 px-4 py-2">
-          {navLinks.map((link) => (
-            <NavLink
-              key={link.path}
-              to={link.path}
-              className={linkClass}
-              end={link.path === "/"}
-              onClick={closeMenu}   // close menu when user taps a link
-            >
-              <i className={`ti ${link.icon} text-base`} aria-hidden="true" />
-              {link.label}
-            </NavLink>
-          ))}
+        <div className="lg:hidden border-t border-slate-800 bg-slate-950/95 backdrop-blur-xl">
+          <div className="space-y-2 p-4">
+            {navLinks.map((link) => (
+              <NavLink
+                key={link.path}
+                to={link.path}
+                className={linkClass}
+                end={link.path === "/"}
+                onClick={() => setMenuOpen(false)}
+              >
+                <i className={`ti ${link.icon}`} />
+                {link.label}
+              </NavLink>
+            ))}
+          </div>
         </div>
       )}
-
     </nav>
   );
 }
