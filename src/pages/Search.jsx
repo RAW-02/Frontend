@@ -86,6 +86,8 @@ export default function Search() {
     try {
       // Call our service function — this hits GET /api/search?q=<query>
       const response = await searchVulnerabilities(query);
+
+
       setResults(response.data.results ?? response.data ?? []);
 
     } catch (err) {
@@ -198,8 +200,8 @@ export default function Search() {
                   <th className="text-left text-xs text-slate-400 font-medium px-4 py-3 whitespace-nowrap">Threat score</th>
                   <th className="text-left text-xs text-slate-400 font-medium px-4 py-3 whitespace-nowrap">EPSS</th>
                   <th className="text-center text-xs text-slate-400 font-medium px-4 py-3">KEV</th>
-                  <th className="text-center text-xs text-slate-400 font-medium px-4 py-3">PoC</th>
-                  <th className="text-center text-xs text-slate-400 font-medium px-4 py-3">Exploit</th>
+                  {/* <th className="text-center text-xs text-slate-400 font-medium px-4 py-3">PoC</th>
+                  <th className="text-center text-xs text-slate-400 font-medium px-4 py-3">Exploit</th> */}
                 </tr>
               </thead>
 
@@ -233,19 +235,27 @@ export default function Search() {
 
                     {/* EPSS is 0–1, show 3 decimal places */}
                     <td className="px-4 py-3 text-slate-300 font-mono text-xs">
-                      {Number(vuln.epss).toFixed(3)}
+                      {vuln.epss != null
+                        ? Number(vuln.epss).toFixed(3)
+                        : "N/A"}
                     </td>
 
                     {/* Boolean columns are centered */}
                     <td className="px-4 py-3 text-center">
-                      <BooleanIcon value={vuln.kev} />
+                      <BooleanIcon value={vuln.kev_status} />
+                      
+                    </td>
+                    {/* <td className="px-4 py-3 text-center">
+                      <BooleanIcon
+                        value={
+                          vuln.github_top_pocs &&
+                          vuln.github_top_pocs.length > 0
+                        }
+                      />
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <BooleanIcon value={vuln.poc} />
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <BooleanIcon value={vuln.exploit} />
-                    </td>
+                      <BooleanIcon value={vuln.exploit_available} />
+                    </td> */}
                   </tr>
                 ))}
               </tbody>

@@ -20,11 +20,12 @@ import api from "./api";
 //   total: 4
 // }
 export const searchVulnerabilities = (query, page = 1, limit = 20) => {
-  return api.get("/api/search", {
+  return api.get("/search", {
     params: {
-      q     : query.trim(),
+      query: query.trim(),
       page,
       limit,
     },
   });
 };
+

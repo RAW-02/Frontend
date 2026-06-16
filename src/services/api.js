@@ -4,7 +4,9 @@ import axios from "axios";
 // searchService calling api.get("/api/search") becomes:
 // GET http://localhost:8000/api/search
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  // baseURL: import.meta.env.VITE_API_BASE_URL,
+
+  baseURL: "",
   timeout: 15000,
   headers: {
     "Content-Type": "application/json",

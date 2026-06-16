@@ -21,11 +21,11 @@ function VendorBar({ name, count, max }) {
 export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({
-    total: 0,
-    critical: 0,
-    exploited: 0,
-    pocs: 0,
-  });
+  total_vulnerabilities: 0,
+  critical: 0,
+  kev: 0,
+  exploitable: 0,
+});
 
   const [recentVulns, setRecentVulns] = useState([]);
   const [topVendors, setTopVendors] = useState([]);
@@ -41,6 +41,12 @@ export default function Dashboard() {
           getTopVendors(5),
           getTrendData(),
         ]);
+
+
+        console.log("statsRes =", statsRes.data);
+        console.log("recentRes =", recentRes.data);
+        console.log("vendorsRes =", vendorsRes.data);
+        console.log("trendRes =", trendRes.data);
 
         setStats(statsRes.data);
         setRecentVulns(recentRes.data);
@@ -69,7 +75,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total vulnerabilities"
-          value={stats.total}
+          value={stats.total_vulnerabilities}
           icon="ti-database"
           color="text-slate-100"
         />
@@ -81,13 +87,13 @@ export default function Dashboard() {
         />
         <StatCard
           label="Known exploited"
-          value={stats.exploited}
+          value={stats.kev}
           icon="ti-bug"
           color="text-orange-400"
         />
         <StatCard
           label="Public PoCs"
-          value={stats.pocs}
+          value={stats.exploitable}
           icon="ti-code"
           color="text-yellow-400"
         />
@@ -97,9 +103,9 @@ export default function Dashboard() {
         <Card title="Recent vulnerabilities">
           <ul className="space-y-3">
             {recentVulns.map((vuln) => (
-              <li key={vuln.id} className="flex items-center justify-between">
+              <li key={vuln.cve_id} className="flex items-center justify-between">
                 <span className="text-sm font-mono text-blue-400">
-                  {vuln.id}
+                  {vuln.cve_id}
                 </span>
                 <SeverityBadge severity={vuln.severity} />
               </li>
@@ -145,8 +151,8 @@ export default function Dashboard() {
         <Card title="Top vendors">
           {topVendors.map((vendor) => (
             <VendorBar
-              key={vendor.name}
-              name={vendor.name}
+              key={vendor.product}
+              name={vendor.product}
               count={vendor.count}
               max={maxVendorCount}
             />
