@@ -9,6 +9,21 @@ import api from "./api";
 //   top_cwes              : [{ name: "CWE-79",    value: 3812 }, ...],
 //   top_products          : [{ name: "Windows",   value: 2940 }, ...]
 // }
-export const getAnalytics = () => {
-  return api.get("/api/analytics");
-};
+
+export const getDashboardAnalytics = () =>
+  api.get("/api/analytics/dashboard");
+
+export const getSeverityAnalytics = () =>
+  api.get("/api/analytics/severity");
+
+export const getVendorAnalytics = () =>
+  api.get("/api/analytics/vendors");
+
+export const getTopCweAnalytics = () =>
+  api.get("/api/analytics/top-cwe");
+
+export const getEpssAnalytics = () =>
+  api.get("/api/analytics/epss");
+
+export const getThreatScoreAnalytics = () =>
+  api.get("/api/analytics/threat-score");

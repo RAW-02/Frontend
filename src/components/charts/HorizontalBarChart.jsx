@@ -10,12 +10,15 @@ import {
 export default function HorizontalBarChart({
   data = [],
   color = "#3b82f6",
-  height = 240,
+  tooltipLabel = "Count",
+  height,
 }) {
+    const dynamicHeight = Math.max(240,data.length * 35);
+
   if (!data.length) return null;
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ResponsiveContainer width="100%" height={height || dynamicHeight}>
       <BarChart
         data={data}
         layout="vertical"
@@ -25,7 +28,7 @@ export default function HorizontalBarChart({
         <YAxis
           dataKey="name"
           type="category"
-          width={90}
+          width={140}
           tick={{
             fill: "#94a3b8",
             fontSize: 12,
@@ -49,7 +52,7 @@ export default function HorizontalBarChart({
           }}
           formatter={(value) => [
             Number(value).toLocaleString(),
-            "Count",
+            "Vulnerabilities",
           ]}
           cursor={{ fill: "rgba(255,255,255,.04)" }}
         />
