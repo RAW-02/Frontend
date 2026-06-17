@@ -113,17 +113,21 @@ export default function Analytics() {
         );
 
         setVendorData(
-          vendorRes.data.map(item => ({
-            name: item.vendor,
-            value: item.count
-          }))
+          vendorRes.data
+            .slice(0, 10)
+            .map(item => ({
+              name: item.vendor,
+              value: item.count
+            }))
         );
 
         setCweData(
-          cweRes.data.map(item => ({
-            name: item.cwe,
-            value: item.count
-          }))
+          cweRes.data
+            .slice(0, 10)
+            .map(item => ({
+              name: item.cwe,
+              value: item.count
+            }))
         );
 
         setEpssStats(epssRes.data);
@@ -221,29 +225,48 @@ export default function Analytics() {
         </ChartCard>
 
         <ChartCard
-          title="Top vendors"
+          title="Top 10 vendors"
           icon="ti-building"
           loading={loading}
         >
-          <HorizontalBarChart
-            data={vendorData}
-            color="#3b82f6"
-            tooltipLabel="Vulnerabilities"
-          />
+
+          <>
+            <HorizontalBarChart
+              data={vendorData}
+              color="#3b82f6"
+              tooltipLabel="Vulnerabilities"
+            />
+
+            <p className="mt-3 text-xs text-slate-500">
+              Showing the 10 vendors with the highest number of affected vulnerabilities.
+            </p>
+          </>
+
+
         </ChartCard>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <ChartCard
-          title="Top CWEs"
+          title="Top 10 CWEs"
           icon="ti-code"
           loading={loading}
         >
+        
+        <>
           <HorizontalBarChart
             data={cweData}
             color="#a78bfa"
             tooltipLabel="Affected CVEs"
           />
+
+          <p className="mt-3 text-xs text-slate-500">
+            Showing the 10 most common weakness categories across all indexed vulnerabilities.
+          </p>
+        </>
+
+
+
         </ChartCard>
 
         <Card title="EPSS Statistics" icon="ti-percentage">
