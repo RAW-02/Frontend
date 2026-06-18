@@ -18,6 +18,7 @@ export default function Card({title, icon, children, className = "",}) {
             <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-300">
               {title}
             </h2>
+            
           </div>
         </div>
       )}

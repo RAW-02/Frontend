@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import PieChart from "../components/charts/PieChart";
 import HorizontalBarChart from "../components/charts/HorizontalBarChart";
 import Card from "../components/Card";
+
+import MetricCard from "../components/analytics/MetricCard";
+
 import {
   getDashboardAnalytics,
   getSeverityAnalytics,
@@ -10,6 +13,9 @@ import {
   getEpssAnalytics,
   getThreatScoreAnalytics
 } from "../services/analyticsService";
+
+
+
 
 // ── SEVERITY COLORS ──────────────────────────────────────────
 const SEVERITY_COLORS = [
@@ -23,7 +29,7 @@ const SEVERITY_COLORS = [
 // ── CHART SECTION WRAPPER ────────────────────────────────────
 function ChartCard({ title, icon, loading, children }) {
   return (
-    <Card title={title} icon={icon}>
+    <Card title={title} icon={icon}  >
       {loading ? (
         <div className="h-52 bg-slate-700/50 rounded-lg animate-pulse" />
       ) : (
@@ -33,29 +39,6 @@ function ChartCard({ title, icon, loading, children }) {
   );
 }
 
-
-function StatCard({ title, value, icon, color = "text-cyan-400" }) {
-  return (
-    <Card>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-slate-500">
-            {title}
-          </p>
-
-          <p className="mt-2 text-3xl font-bold text-slate-100">
-            {value}
-          </p>
-        </div>
-
-        <i
-          className={`ti ${icon} text-3xl ${color}`}
-          aria-hidden="true"
-        />
-      </div>
-    </Card>
-  );
-}
 
 
 
@@ -174,48 +157,51 @@ export default function Analytics() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
 
-        <StatCard
+        <MetricCard
           title="Total Vulnerabilities"
-          value={dashboard?.total_vulnerabilities ?? "-"}
-          icon="ti-shield"
-          color="text-cyan-400"
+          value={dashboard?.total_vulnerabilities}
+          subtitle="All indexed CVEs"
+          icon="ti-shield-check"
+          iconBg="bg-cyan-950"
+          iconColor="text-cyan-400"
         />
 
-        <StatCard
+        <MetricCard
           title="Critical CVEs"
           value={criticalCount}
+          subtitle="Severity is Critical"
           icon="ti-alert-triangle"
-          color="text-red-400"
+          iconBg="bg-red-950"
+          iconColor="text-red-400"
         />
 
-        <StatCard
+        <MetricCard
           title="Average EPSS"
-          value={
-            dashboard?.average_epss
-              ? dashboard.average_epss.toFixed(3)
-              : "-"
-          }
-          icon="ti-percentage"
-          color="text-yellow-400"
+          value={dashboard?.average_epss?.toFixed(3)}
+          subtitle="Exploitation probability"
+          icon="ti-target-arrow"
+          iconBg="bg-yellow-950"
+          iconColor="text-yellow-400"
         />
 
-        <StatCard
+        <MetricCard
           title="Avg Threat Score"
-          value={
-            dashboard?.average_threat_score
-              ? dashboard.average_threat_score.toFixed(1)
-              : "-"
-          }
+          value={dashboard?.average_threat_score?.toFixed(1)}
+          subtitle="Overall risk score"
           icon="ti-flame"
-          color="text-orange-400"
+          iconBg="bg-orange-950"
+          iconColor="text-orange-400"
         />
 
       </div>
+
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <ChartCard
           title="Severity distribution"
           icon="ti-chart-pie"
+          
           loading={loading}
         >
           <PieChart
@@ -227,6 +213,7 @@ export default function Analytics() {
         <ChartCard
           title="Top 10 vendors"
           icon="ti-building"
+          
           loading={loading}
         >
 
@@ -246,27 +233,25 @@ export default function Analytics() {
         </ChartCard>
       </div>
 
+      {/* ROW 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
         <ChartCard
           title="Top 10 CWEs"
           icon="ti-code"
           loading={loading}
         >
-        
-        <>
-          <HorizontalBarChart
-            data={cweData}
-            color="#a78bfa"
-            tooltipLabel="Affected CVEs"
-          />
+          <>
+            <HorizontalBarChart
+              data={cweData}
+              color="#a78bfa"
+              tooltipLabel="Affected CVEs"
+            />
 
-          <p className="mt-3 text-xs text-slate-500">
-            Showing the 10 most common weakness categories across all indexed vulnerabilities.
-          </p>
-        </>
-
-
-
+            <p className="mt-3 text-xs text-slate-500">
+              Showing the 10 most common weakness categories across all indexed vulnerabilities.
+            </p>
+          </>
         </ChartCard>
 
         <Card title="EPSS Statistics" icon="ti-percentage">
@@ -296,43 +281,45 @@ export default function Analytics() {
           </div>
         </Card>
 
+      </div>
 
+      {/* ROW 3 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
+        <Card title="Threat Score Statistics" icon="ti-flame">
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div className="space-y-4">
 
-          <Card title="Threat Score Statistics" icon="ti-flame">
-
-            <div className="space-y-4">
-
-              <div className="flex justify-between">
-                <span>Average</span>
-                <span className="font-semibold">
-                  {threatStats?.average?.toFixed(1)}
-                </span>
-              </div>
-
-              <div className="flex justify-between">
-                <span>Maximum</span>
-                <span className="font-semibold text-green-400">
-                  {threatStats?.maximum?.toFixed(1)}
-                </span>
-              </div>
-
-              <div className="flex justify-between">
-                <span>Minimum</span>
-                <span className="font-semibold text-red-400">
-                  {threatStats?.minimum?.toFixed(1)}
-                </span>
-              </div>
-
+            <div className="flex justify-between">
+              <span>Average</span>
+              <span className="font-semibold">
+                {threatStats?.average?.toFixed(1)}
+              </span>
             </div>
 
-          </Card>
+            <div className="flex justify-between">
+              <span>Maximum</span>
+              <span className="font-semibold text-green-400">
+                {threatStats?.maximum?.toFixed(1)}
+              </span>
+            </div>
 
-        </div>
+            <div className="flex justify-between">
+              <span>Minimum</span>
+              <span className="font-semibold text-red-400">
+                {threatStats?.minimum?.toFixed(1)}
+              </span>
+            </div>
+
+          </div>
+
+        </Card>
+
         
+
       </div>
+        
+      
     </div>
   );
 }
