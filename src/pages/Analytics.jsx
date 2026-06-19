@@ -5,6 +5,11 @@ import Card from "../components/Card";
 
 import MetricCard from "../components/analytics/MetricCard";
 
+import InsightCard from "../components/analytics/InsightCard";
+
+
+import KnowledgePanel from "../components/analytics/KnowledgePanel";
+
 import {
   getDashboardAnalytics,
   getSeverityAnalytics,
@@ -65,6 +70,9 @@ export default function Analytics() {
   dashboard?.severity_distribution?.find(
     item => item.key === "CRITICAL"
   )?.doc_count || 0;
+
+  const topVendor = vendorData[0];
+  const topCwe = cweData[0];
 
   useEffect(() => {
     const fetchData = async () => {
@@ -155,14 +163,14 @@ export default function Analytics() {
       </div>
 
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
 
         <MetricCard
           title="Total Vulnerabilities"
           value={dashboard?.total_vulnerabilities}
           subtitle="All indexed CVEs"
           icon="ti-shield-check"
-          iconBg="bg-cyan-950"
+          iconBg="bg-cyan-950/80 shadow-lg shadow-cyan-500/20"
           iconColor="text-cyan-400"
         />
 
@@ -171,7 +179,7 @@ export default function Analytics() {
           value={criticalCount}
           subtitle="Severity is Critical"
           icon="ti-alert-triangle"
-          iconBg="bg-red-950"
+          iconBg="bg-red-950/80 shadow-lg shadow-red-500/20"
           iconColor="text-red-400"
         />
 
@@ -180,7 +188,7 @@ export default function Analytics() {
           value={dashboard?.average_epss?.toFixed(3)}
           subtitle="Exploitation probability"
           icon="ti-target-arrow"
-          iconBg="bg-yellow-950"
+          iconBg="bg-yellow-950/80 shadow-lg shadow-yellow-500/20"
           iconColor="text-yellow-400"
         />
 
@@ -189,11 +197,55 @@ export default function Analytics() {
           value={dashboard?.average_threat_score?.toFixed(1)}
           subtitle="Overall risk score"
           icon="ti-flame"
-          iconBg="bg-orange-950"
+          iconBg="bg-orange-950/80 shadow-lg shadow-orange-500/20"
           iconColor="text-orange-400"
         />
 
       </div>
+
+
+
+
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+
+        <InsightCard
+          title="Top Vendor"
+          value={topVendor?.name || "-"}
+          subtitle={`${topVendor?.value || 0} vulnerabilities`}
+          icon="ti-building"
+          color="text-blue-400"
+        />
+
+        <InsightCard
+          title="Top CWE"
+          value={topCwe?.name || "-"}
+          subtitle={`${topCwe?.value || 0} affected CVEs`}
+          icon="ti-code"
+          color="text-purple-400"
+        />
+
+        <InsightCard
+          title="Highest EPSS"
+          value={epssStats?.maximum?.toFixed(3) || "-"}
+          subtitle="Maximum exploitability"
+          icon="ti-target-arrow"
+          color="text-yellow-400"
+        />
+
+        <InsightCard
+          title="Highest Threat"
+          value={threatStats?.maximum?.toFixed(1) || "-"}
+          subtitle="Maximum risk score"
+          icon="ti-flame"
+          color="text-orange-400"
+        />
+
+      </div>
+
+
+
+      
 
 
 
@@ -254,66 +306,9 @@ export default function Analytics() {
           </>
         </ChartCard>
 
-        <Card title="EPSS Statistics" icon="ti-percentage">
-          <div className="space-y-4">
 
-            <div className="flex justify-between">
-              <span>Average</span>
-              <span className="font-semibold">
-                {epssStats?.average?.toFixed(3)}
-              </span>
-            </div>
-
-            <div className="flex justify-between">
-              <span>Maximum</span>
-              <span className="font-semibold text-green-400">
-                {epssStats?.maximum?.toFixed(3)}
-              </span>
-            </div>
-
-            <div className="flex justify-between">
-              <span>Minimum</span>
-              <span className="font-semibold text-red-400">
-                {epssStats?.minimum?.toFixed(5)}
-              </span>
-            </div>
-
-          </div>
-        </Card>
-
-      </div>
-
-      {/* ROW 3 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-        <Card title="Threat Score Statistics" icon="ti-flame">
-
-          <div className="space-y-4">
-
-            <div className="flex justify-between">
-              <span>Average</span>
-              <span className="font-semibold">
-                {threatStats?.average?.toFixed(1)}
-              </span>
-            </div>
-
-            <div className="flex justify-between">
-              <span>Maximum</span>
-              <span className="font-semibold text-green-400">
-                {threatStats?.maximum?.toFixed(1)}
-              </span>
-            </div>
-
-            <div className="flex justify-between">
-              <span>Minimum</span>
-              <span className="font-semibold text-red-400">
-                {threatStats?.minimum?.toFixed(1)}
-              </span>
-            </div>
-
-          </div>
-
-        </Card>
+        
+        <KnowledgePanel />
 
         
 
