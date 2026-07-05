@@ -32,14 +32,8 @@ export default defineConfig(({ mode }) => {
     // ── Production build settings ──────────────────────────────
     build: {
       outDir: "dist",
-
-      // Never generate source maps in production
-      // Source maps expose your original source code to anyone
       sourcemap: false,
-
-      // Minify output — smaller files, faster load
-      minify: "esbuild",
-
+      // minify handled automatically by Vite — no esbuild needed
       rollupOptions: {
         output: {
           manualChunks(id) {
