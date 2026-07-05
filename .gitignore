@@ -1,27 +1,59 @@
-# Logs
-logs
+
+
+
+
+
+
+
+
+
+# ── Dependencies ───────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ── Build output ───────────────────────────────────────────────
+dist/
+dist-ssr/
+build/
+
+# ── Environment files ──────────────────────────────────────────
+# CRITICAL: These files may contain backend IPs, API keys, secrets
+# NONE of these should EVER be committed to GitHub
+
+.env
+.env.local          
+.env.development
+.env.production
+.env.staging
+.env.*
+!.env.local.example  
+
+# ── Terraform secrets ──────────────────────────────────────────
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/terraform.tfvars     
+
+# ── Editor files ───────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Logs ───────────────────────────────────────────────────────
 *.log
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# ── Test coverage ──────────────────────────────────────────────
+coverage/
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
 
-.requirement.txt
-.env
+
+
+
+

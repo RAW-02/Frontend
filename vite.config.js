@@ -1,39 +1,55 @@
-import { defineConfig } from "vite";
+
+
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
-export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-  ],
+export default defineConfig(({ mode }) => {
+  // Loads .env.local for local development
+  // .env.local is gitignored — backend IP stays off GitHub
+  const env = loadEnv(mode, process.cwd(), "");
 
-  server: {
-    proxy: {
-      "/dashboard": {
-        target: "http://localhost:8000",
-        changeOrigin: true,
-      },
+  // In dev:  reads VITE_PROXY_TARGET from your .env.local file
+  // In prod: this proxy block is never used (only npm run dev uses it)
+  const BACKEND = env.VITE_PROXY_TARGET || "http://localhost:8000";
 
-      "/search": {
-        target: "http://localhost:8000",
-        changeOrigin: true,
-      },
+  return {
+    plugins: [react(), tailwindcss()],
 
-      "/cve": {
-        target: "http://localhost:8000",
-        changeOrigin: true,
-      },
-
-      "/export": {
-        target: "http://localhost:8000",
-        changeOrigin: true,
-      },
-
-      "/api": {
-        target: "http://localhost:8000",
-        changeOrigin: true,
+    // ── Development proxy ──────────────────────────────────────
+    // ONLY active when you run: npm run dev
+    // In production build (npm run build) this section is ignored
+    server: {
+      proxy: {
+        "/dashboard": { target: BACKEND, changeOrigin: true },
+        "/search":     { target: BACKEND, changeOrigin: true },
+        "/cve":        { target: BACKEND, changeOrigin: true },
+        "/export":     { target: BACKEND, changeOrigin: true },
+        "/api":        { target: BACKEND, changeOrigin: true },
       },
     },
-  },
+
+    // ── Production build settings ──────────────────────────────
+    build: {
+      outDir: "dist",
+
+      // Never generate source maps in production
+      // Source maps expose your original source code to anyone
+      sourcemap: false,
+
+      // Minify output — smaller files, faster load
+      minify: "esbuild",
+
+      rollupOptions: {
+        output: {
+          // Split vendor libraries into separate chunk
+          // Users cache react/recharts separately from your app code
+          manualChunks: {
+            vendor: ["react", "react-dom", "react-router-dom"],
+            charts: ["recharts"],
+          },
+        },
+      },
+    },
+  };
 });
