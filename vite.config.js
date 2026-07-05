@@ -42,11 +42,15 @@ export default defineConfig(({ mode }) => {
 
       rollupOptions: {
         output: {
-          // Split vendor libraries into separate chunk
-          // Users cache react/recharts separately from your app code
-          manualChunks: {
-            vendor: ["react", "react-dom", "react-router-dom"],
-            charts: ["recharts"],
+          manualChunks(id) {
+            if (id.includes("node_modules/react") ||
+                id.includes("node_modules/react-dom") ||
+                id.includes("node_modules/react-router-dom")) {
+              return "vendor";
+            }
+            if (id.includes("node_modules/recharts")) {
+              return "charts";
+            }
           },
         },
       },
