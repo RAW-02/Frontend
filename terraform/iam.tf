@@ -123,16 +123,14 @@ resource "aws_iam_role_policy" "github_ssm" {
         Effect = "Allow"
         Action = [
           "ssm:SendCommand",
-          "ssm:GetCommandInvocation"
+          "ssm:GetCommandInvocation",
+          "ssm:ListCommandInvocations"
         ]
-        Resource = [
-          "arn:aws:ssm:${var.aws_region}:*:document/AWS-RunShellScript",
-          aws_instance.frontend.arn
-        ]
+        Resource = "*"
       },
       {
-        Effect   = "Allow"
-        Action   = ["ec2:DescribeInstances"]
+        Effect  = "Allow"
+        Action  = ["ec2:DescribeInstances", "ec2:DescribeInstanceStatus"]
         Resource = "*"
       }
     ]
