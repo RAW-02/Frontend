@@ -1,8 +1,3 @@
-# ═══════════════════════════════════════════════════════════════
-#  PART 1 — EC2 IAM Role
-#  Allows EC2 to use SSM Session Manager + read from S3
-# ═══════════════════════════════════════════════════════════════
-
 resource "aws_iam_role" "ec2_role" {
   name = "${var.project_name}-ec2-role"
 
@@ -16,30 +11,42 @@ resource "aws_iam_role" "ec2_role" {
   })
 }
 
-# SSM Session Manager — shell access without SSH
 resource "aws_iam_role_policy_attachment" "ssm_core" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-# EC2 can read from deploy bucket
 resource "aws_iam_role_policy" "ec2_s3_read" {
   name = "s3-deploy-read"
   role = aws_iam_role.ec2_role.id
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "s3:GetObject",
-        "s3:ListBucket"
-      ]
-      Resource = [
-        aws_s3_bucket.deploy.arn,
-        "${aws_s3_bucket.deploy.arn}/*"
-      ]
-    }]
+    Statement = [
+      {
+        Sid    = "GetFrontendAndProxy"
+        Effect = "Allow"
+        Action = ["s3:GetObject"]
+        Resource = [
+          "${aws_s3_bucket.deploy.arn}/frontend/*",
+          "${aws_s3_bucket.deploy.arn}/config/proxy.conf"
+        ]
+      },
+      {
+        Sid      = "ListBucketPrefixOnly"
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = aws_s3_bucket.deploy.arn
+        Condition = {
+          StringLike = {
+            "s3:prefix" = [
+              "frontend/*",
+              "config/proxy.conf"
+            ]
+          }
+        }
+      }
+    ]
   })
 }
 
@@ -48,24 +55,15 @@ resource "aws_iam_instance_profile" "ec2_profile" {
   role = aws_iam_role.ec2_role.name
 }
 
-
-# ═══════════════════════════════════════════════════════════════
-#  PART 2 — GitHub Actions OIDC Role
-#  No long-lived AWS keys — GitHub gets short-lived token only
-# ═══════════════════════════════════════════════════════════════
-
-# Register GitHub as trusted identity provider
 resource "aws_iam_openid_connect_provider" "github" {
-  url            = "https://token.actions.githubusercontent.com"
-  client_id_list = ["sts.amazonaws.com"]
-  thumbprint_list = [
-    "6938fd4d98bab03faadb97b34396831e3780aea1"
-  ]
+  url             = "https://token.actions.githubusercontent.com"
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
 }
 
-# Role GitHub Actions assumes during deployment
 resource "aws_iam_role" "github_actions" {
-  name = "${var.project_name}-github-actions"
+  name                 = "${var.project_name}-github-actions"
+  max_session_duration = 3600
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -78,40 +76,51 @@ resource "aws_iam_role" "github_actions" {
       Condition = {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-        }
-        # Only YOUR repo can assume this role
-        StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:*"
+          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:ref:refs/heads/deploy"
         }
       }
     }]
   })
 }
 
-# GitHub Actions can upload to S3
 resource "aws_iam_role_policy" "github_s3" {
   name = "s3-deploy-write"
   role = aws_iam_role.github_actions.id
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:DeleteObject",
-        "s3:ListBucket"
-      ]
-      Resource = [
-        aws_s3_bucket.deploy.arn,
-        "${aws_s3_bucket.deploy.arn}/*"
-      ]
-    }]
+    Statement = [
+      {
+        Sid    = "WriteFrontendAndProxy"
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:DeleteObject"
+        ]
+        Resource = [
+          "${aws_s3_bucket.deploy.arn}/frontend/*",
+          "${aws_s3_bucket.deploy.arn}/config/proxy.conf"
+        ]
+      },
+      {
+        Sid      = "ListBucketPrefixOnly"
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = aws_s3_bucket.deploy.arn
+        Condition = {
+          StringLike = {
+            "s3:prefix" = [
+              "frontend/*",
+              "config/proxy.conf"
+            ]
+          }
+        }
+      }
+    ]
   })
 }
 
-# GitHub Actions can send SSM commands to EC2
 resource "aws_iam_role_policy" "github_ssm" {
   name = "ssm-send-command"
   role = aws_iam_role.github_actions.id
@@ -120,17 +129,30 @@ resource "aws_iam_role_policy" "github_ssm" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "SendCommandToFrontendOnly"
+        Effect = "Allow"
+        Action = ["ssm:SendCommand"]
+        Resource = [
+          "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/${aws_instance.frontend.id}",
+          "arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript"
+        ]
+      },
+      {
+        Sid    = "CheckCommandStatus"
         Effect = "Allow"
         Action = [
-          "ssm:SendCommand",
           "ssm:GetCommandInvocation",
           "ssm:ListCommandInvocations"
         ]
         Resource = "*"
       },
       {
-        Effect  = "Allow"
-        Action  = ["ec2:DescribeInstances", "ec2:DescribeInstanceStatus"]
+        Sid    = "DescribeEC2ReadOnly"
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeInstances",
+          "ec2:DescribeInstanceStatus"
+        ]
         Resource = "*"
       }
     ]

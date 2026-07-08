@@ -19,3 +19,8 @@ provider "aws" {
 resource "random_id" "suffix" {
   byte_length = 4
 }
+
+
+
+# Fetches current AWS account ID for use in IAM ARNs
+data "aws_caller_identity" "current" {}
