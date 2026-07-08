@@ -70,90 +70,121 @@ jobs:
             --delete \
             --sse AES256
 
-      - name: Create and upload proxy config
+      - name: Create and upload Nginx config
         env:
           BACKEND_IP: ${{ secrets.BACKEND_IP }}
         run: |
           python3 - <<'PYEOF'
-          import os
-          import textwrap
+import os
+import re
+import textwrap
 
-          backend_ip = os.environ["BACKEND_IP"]
+backend_ip = os.environ["BACKEND_IP"].strip()
 
-          content = f"""
-          location /dashboard/ {{
-              proxy_pass http://{backend_ip}:8000/dashboard/;
-              proxy_http_version 1.1;
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              proxy_connect_timeout 30s;
-              proxy_read_timeout 60s;
-          }}
+if not re.fullmatch(r"[A-Za-z0-9.\-]+", backend_ip):
+    raise ValueError("Invalid BACKEND_IP format")
 
-          location /search/ {{
-              proxy_pass http://{backend_ip}:8000/search/;
-              proxy_http_version 1.1;
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          }}
+content = f"""
+server {{
+    listen 80;
+    server_name _;
 
-          location /api/ {{
-              proxy_pass http://{backend_ip}:8000/api/;
-              proxy_http_version 1.1;
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          }}
+    root /var/www/frontend;
+    index index.html;
 
-          location /cve/ {{
-              proxy_pass http://{backend_ip}:8000/cve/;
-              proxy_http_version 1.1;
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          }}
+    location / {{
+        try_files $uri $uri/ /index.html;
+    }}
 
-          location /export/ {{
-              proxy_pass http://{backend_ip}:8000/export/;
-              proxy_http_version 1.1;
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          }}
-          """
+    location /dashboard/ {{
+        proxy_pass http://{backend_ip}:8000/dashboard/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 30s;
+        proxy_read_timeout 60s;
+    }}
 
-          with open("proxy.conf", "w", encoding="utf-8") as f:
-              f.write(textwrap.dedent(content).lstrip())
-          PYEOF
+    location /search/ {{
+        proxy_pass http://{backend_ip}:8000/search/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }}
 
-          aws s3 cp proxy.conf \
-            s3://${{ vars.S3_BUCKET }}/config/proxy.conf \
+    location /api/ {{
+        proxy_pass http://{backend_ip}:8000/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }}
+
+    location /cve/ {{
+        proxy_pass http://{backend_ip}:8000/cve/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }}
+
+    location /export/ {{
+        proxy_pass http://{backend_ip}:8000/export/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }}
+
+    location ~ /\\. {{
+        deny all;
+    }}
+}}
+"""
+
+with open("univulner-frontend.conf", "w", encoding="utf-8") as f:
+    f.write(textwrap.dedent(content).lstrip())
+PYEOF
+
+          aws s3 cp univulner-frontend.conf \
+            s3://${{ vars.S3_BUCKET }}/config/univulner-frontend.conf \
             --sse AES256
 
-          rm -f proxy.conf
+          rm -f univulner-frontend.conf
 
       - name: Deploy to EC2 via SSM
         run: |
+          cat > ssm-params.json <<'JSON'
+          {
+            "commands": [
+              "set -e",
+              "aws s3 sync s3://${{ vars.S3_BUCKET }}/frontend/ /var/www/frontend/ --delete --region ${{ env.AWS_REGION }}",
+              "NGINX_USER=$(ps -eo user,comm | awk '$2==\"nginx\"{print $1; exit}')",
+              "if ! id \"$NGINX_USER\" >/dev/null 2>&1; then if id nginx >/dev/null 2>&1; then NGINX_USER=nginx; elif id www-data >/dev/null 2>&1; then NGINX_USER=www-data; else NGINX_USER=root; fi; fi",
+              "chown -R $NGINX_USER:$NGINX_USER /var/www/frontend/",
+              "chmod -R 755 /var/www/frontend/",
+              "aws s3 cp s3://${{ vars.S3_BUCKET }}/config/univulner-frontend.conf /etc/nginx/conf.d/univulner-frontend.conf --region ${{ env.AWS_REGION }}",
+              "rm -f /etc/nginx/conf.d/proxy.conf",
+              "if [ -f /etc/nginx/conf.d/default.conf ]; then mv /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf.disabled; fi",
+              "if [ -f /etc/nginx/sites-enabled/default ]; then rm -f /etc/nginx/sites-enabled/default; fi",
+              "nginx -t",
+              "systemctl reload nginx"
+            ]
+          }
+          JSON
+
           COMMAND_ID=$(aws ssm send-command \
             --region ${{ env.AWS_REGION }} \
             --instance-ids "${{ vars.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
-            --parameters '{"commands":[
-              "set -e",
-              "aws s3 sync s3://${{ vars.S3_BUCKET }}/frontend/ /var/www/frontend/ --delete --region ${{ env.AWS_REGION }}",
-              "NGINX_USER=$(ps -eo user,comm | awk '\''$2==\"nginx\"{print $1; exit}'\'')",
-              "NGINX_USER=$(ps -eo user,comm | awk '\''$2==\"nginx\"{print $1; exit}'\'')",
-              "if ! id \"$NGINX_USER\" >/dev/null 2>&1; then if id nginx >/dev/null 2>&1; then NGINX_USER=nginx; elif id www-data >/dev/null 2>&1; then NGINX_USER=www-data; else NGINX_USER=root; fi; fi",
-              "echo Nginx worker user: $NGINX_USER",
-              "chown -R $NGINX_USER:$NGINX_USER /var/www/frontend/",
-              "chown -R $NGINX_USER:$NGINX_USER /var/www/frontend/",
-              "chmod -R 755 /var/www/frontend/",
-              "aws s3 cp s3://${{ vars.S3_BUCKET }}/config/proxy.conf /etc/nginx/conf.d/proxy.conf --region ${{ env.AWS_REGION }}",
-              "nginx -t",
-              "systemctl reload nginx"
-            ]}' \
+            --parameters file://ssm-params.json \
             --query "Command.CommandId" \
             --output text)
 

@@ -24,24 +24,26 @@ resource "aws_iam_role_policy" "ec2_s3_read" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "GetFrontendAndProxy"
+        Sid    = "GetFrontendAndNginxConfig"
         Effect = "Allow"
         Action = ["s3:GetObject"]
         Resource = [
           "${aws_s3_bucket.deploy.arn}/frontend/*",
-          "${aws_s3_bucket.deploy.arn}/config/proxy.conf"
+          "${aws_s3_bucket.deploy.arn}/config/univulner-frontend.conf"
         ]
       },
       {
-        Sid      = "ListBucketPrefixOnly"
+        Sid      = "ListDeployPrefixesOnly"
         Effect   = "Allow"
         Action   = ["s3:ListBucket"]
         Resource = aws_s3_bucket.deploy.arn
         Condition = {
           StringLike = {
             "s3:prefix" = [
+              "frontend",
               "frontend/*",
-              "config/proxy.conf"
+              "config",
+              "config/univulner-frontend.conf"
             ]
           }
         }
@@ -91,7 +93,7 @@ resource "aws_iam_role_policy" "github_s3" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "WriteFrontendAndProxy"
+        Sid    = "WriteFrontendAndNginxConfig"
         Effect = "Allow"
         Action = [
           "s3:PutObject",
@@ -100,19 +102,21 @@ resource "aws_iam_role_policy" "github_s3" {
         ]
         Resource = [
           "${aws_s3_bucket.deploy.arn}/frontend/*",
-          "${aws_s3_bucket.deploy.arn}/config/proxy.conf"
+          "${aws_s3_bucket.deploy.arn}/config/univulner-frontend.conf"
         ]
       },
       {
-        Sid      = "ListBucketPrefixOnly"
+        Sid      = "ListDeployPrefixesOnly"
         Effect   = "Allow"
         Action   = ["s3:ListBucket"]
         Resource = aws_s3_bucket.deploy.arn
         Condition = {
           StringLike = {
             "s3:prefix" = [
+              "frontend",
               "frontend/*",
-              "config/proxy.conf"
+              "config",
+              "config/univulner-frontend.conf"
             ]
           }
         }
