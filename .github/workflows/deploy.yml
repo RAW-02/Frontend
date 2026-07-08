@@ -158,11 +158,11 @@ jobs:
               "chmod -R 755 /var/www/frontend/",
               "aws s3 cp s3://${{ vars.S3_BUCKET }}/config/univulner-frontend.conf /etc/nginx/conf.d/univulner-frontend.conf --region ${{ env.AWS_REGION }}",
               "rm -f /etc/nginx/conf.d/proxy.conf",
-              "if [ -f /etc/nginx/conf.d/default.conf ]; then mv /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf.disabled; fi",
-              "if [ -f /etc/nginx/sites-enabled/default ]; then rm -f /etc/nginx/sites-enabled/default; fi",
+              "rm -f /etc/nginx/conf.d/default.conf",
+              "rm -f /etc/nginx/conf.d/default.conf.disabled",
+              "rm -f /etc/nginx/sites-enabled/default",
               "nginx -t",
-              "systemctl reload nginx"
-            ]
+              "systemctl is-active --quiet nginx && systemctl reload nginx || systemctl start nginx"
           }
           JSON
 
