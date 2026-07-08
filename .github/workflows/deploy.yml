@@ -74,84 +74,70 @@ jobs:
         env:
           BACKEND_IP: ${{ secrets.BACKEND_IP }}
         run: |
-          python3 - <<'PYEOF'
-import os
-import re
-import textwrap
+          cat > univulner-frontend.conf <<EOF
+          server {
+              listen 80;
+              server_name _;
 
-backend_ip = os.environ["BACKEND_IP"].strip()
+              root /var/www/frontend;
+              index index.html;
 
-if not re.fullmatch(r"[A-Za-z0-9.\-]+", backend_ip):
-    raise ValueError("Invalid BACKEND_IP format")
+              location / {
+                  try_files \$uri \$uri/ /index.html;
+              }
 
-content = f"""
-server {{
-    listen 80;
-    server_name _;
+              location /dashboard/ {
+                  proxy_pass http://${BACKEND_IP}:8000/dashboard/;
+                  proxy_http_version 1.1;
+                  proxy_set_header Host \$host;
+                  proxy_set_header X-Real-IP \$remote_addr;
+                  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto \$scheme;
+                  proxy_connect_timeout 30s;
+                  proxy_read_timeout 60s;
+              }
 
-    root /var/www/frontend;
-    index index.html;
+              location /search/ {
+                  proxy_pass http://${BACKEND_IP}:8000/search/;
+                  proxy_http_version 1.1;
+                  proxy_set_header Host \$host;
+                  proxy_set_header X-Real-IP \$remote_addr;
+                  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto \$scheme;
+              }
 
-    location / {{
-        try_files $uri $uri/ /index.html;
-    }}
+              location /api/ {
+                  proxy_pass http://${BACKEND_IP}:8000/api/;
+                  proxy_http_version 1.1;
+                  proxy_set_header Host \$host;
+                  proxy_set_header X-Real-IP \$remote_addr;
+                  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto \$scheme;
+              }
 
-    location /dashboard/ {{
-        proxy_pass http://{backend_ip}:8000/dashboard/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_connect_timeout 30s;
-        proxy_read_timeout 60s;
-    }}
+              location /cve/ {
+                  proxy_pass http://${BACKEND_IP}:8000/cve/;
+                  proxy_http_version 1.1;
+                  proxy_set_header Host \$host;
+                  proxy_set_header X-Real-IP \$remote_addr;
+                  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto \$scheme;
+              }
 
-    location /search/ {{
-        proxy_pass http://{backend_ip}:8000/search/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }}
+              location /export/ {
+                  proxy_pass http://${BACKEND_IP}:8000/export/;
+                  proxy_http_version 1.1;
+                  proxy_set_header Host \$host;
+                  proxy_set_header X-Real-IP \$remote_addr;
+                  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto \$scheme;
+              }
 
-    location /api/ {{
-        proxy_pass http://{backend_ip}:8000/api/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }}
-
-    location /cve/ {{
-        proxy_pass http://{backend_ip}:8000/cve/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }}
-
-    location /export/ {{
-        proxy_pass http://{backend_ip}:8000/export/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }}
-
-    location ~ /\\. {{
-        deny all;
-    }}
-}}
-"""
-
-with open("univulner-frontend.conf", "w", encoding="utf-8") as f:
-    f.write(textwrap.dedent(content).lstrip())
-PYEOF
+              location ~ /\. {
+                  deny all;
+              }
+          }
+          EOF
 
           aws s3 cp univulner-frontend.conf \
             s3://${{ vars.S3_BUCKET }}/config/univulner-frontend.conf \
