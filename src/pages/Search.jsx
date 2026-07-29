@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import SeverityBadge from "../components/SeverityBadge";
 import AiSummaryCard from "../components/AiSummaryCard";
 import { searchVulnerabilities } from "../services/searchService";
