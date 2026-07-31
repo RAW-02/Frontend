@@ -159,11 +159,16 @@ function ComponentCard({ component, index }) {
                       key={vuln.cve_id}
                       className="border-t border-slate-800/40 hover:bg-slate-800/30 transition-colors"
                     >
+                      
                       {/* CVE ID */}
                       <td className="px-4 py-2.5">
-                        <span className="font-mono text-blue-400 text-[11px]">
+                        <a
+                          href={`/vulnerability/${vuln.cve_id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-mono text-blue-400 text-[11px] hover:text-blue-300 hover:underline transition-colors"
+                        >
                           {vuln.cve_id}
-                        </span>
+                        </a>
                       </td>
 
                       {/* Severity */}
