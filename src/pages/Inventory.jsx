@@ -2,8 +2,11 @@
 
 
 
+
 import { useState, useRef, useCallback } from "react";
+import { Link } from "react-router";
 import { analyzeInventory } from "../services/inventoryService";
+import FloatingChatbot from "../components/FloatingChatbot";
 
 // ── Constants ──────────────────────────────────────────────────
 const REQUIRED_COLUMNS = ["Host", "Vendor", "Product", "Version"];
@@ -162,13 +165,22 @@ function ComponentCard({ component, index }) {
                       
                       {/* CVE ID */}
                       <td className="px-4 py-2.5">
-                        <a
-                          href={`/vulnerability/${vuln.cve_id}`}
+                        <Link
+                          to={`/vulnerability/${vuln.cve_id}`}
+                          state={{
+                            fromInventory: true,
+                            inventoryContext: {
+                              host: component.host,
+                              vendor: component.vendor,
+                              product: component.product,
+                              version: component.version,
+                            },
+                          }}
                           onClick={(e) => e.stopPropagation()}
                           className="font-mono text-blue-400 text-[11px] hover:text-blue-300 hover:underline transition-colors"
                         >
                           {vuln.cve_id}
-                        </a>
+                        </Link>
                       </td>
 
                       {/* Severity */}
@@ -269,6 +281,7 @@ export default function Inventory() {
   const [analyzing,   setAnalyzing]   = useState(false);
   const [apiError,    setApiError]    = useState(null);
   const [results,     setResults]     = useState(null); // full response JSON
+
 
   const fileInputRef = useRef(null);
 
@@ -674,7 +687,13 @@ export default function Inventory() {
 
         </div>
       )}
+
+
+      {/* ── FLOATING CYBERBOT ─────────────────────────────── */}
+      <FloatingChatbot />
     </div>
   );
 }
+
+
 
