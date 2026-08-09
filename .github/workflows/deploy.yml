@@ -22,20 +22,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ============================================================
+      # 1. CHECKOUT
+      # ============================================================
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # ============================================================
+      # 2. NODE SETUP
+      # ============================================================
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "npm"
 
+      # ============================================================
+      # 3. INSTALL DEPENDENCIES
+      # ============================================================
       - name: Install dependencies
         run: npm ci
 
+      # ============================================================
+      # 4. SECURITY SCANS
+      # ============================================================
       - name: SAST - retire.js
         run: npx --yes retire --path . --outputformat text
 
@@ -48,15 +60,44 @@ jobs:
           path: ./
           extra_args: --only-verified
 
+      # ============================================================
+      # 5. BUILD FRONTEND
+      # ============================================================
       - name: Build frontend
         run: npm run build
 
+      # ============================================================
+      # 6. VERIFY BUILD
+      # ============================================================
       - name: Verify build output
         run: |
+          set -e
+
           test -d dist
           test -f dist/index.html
+
+          echo "=== dist directory ==="
           ls -lah dist/
 
+          echo "=== assets directory ==="
+          ls -lah dist/assets/
+
+          echo "=== Assets referenced by index.html ==="
+          grep -oE '/assets/[^"]+\.(js|css)' dist/index.html || true
+
+          echo "=== Validate local build assets ==="
+          for asset in $(grep -oE '/assets/[^"]+\.(js|css)' dist/index.html); do
+            if [ -f "dist${asset}" ]; then
+              echo "OK: $asset"
+            else
+              echo "MISSING BUILD ASSET: $asset"
+              exit 1
+            fi
+          done
+
+      # ============================================================
+      # 7. AWS AUTHENTICATION USING OIDC
+      # ============================================================
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -64,16 +105,107 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-duration-seconds: 900
 
-      - name: Upload frontend build to S3
+      # ============================================================
+      # 8. UPLOAD HASHED ASSETS TO S3
+      #
+      # Vite filenames contain hashes:
+      #
+      # index-ABC123.js
+      # index-XYZ456.css
+      #
+      # So these files can safely be cached for a long time.
+      # ============================================================
+      - name: Upload frontend assets to S3
         run: |
-          aws s3 sync dist/ s3://${{ vars.S3_BUCKET }}/frontend/ \
-            --delete \
-            --sse AES256
+          set -e
 
+          aws s3 sync \
+            dist/assets/ \
+            s3://${{ vars.S3_BUCKET }}/frontend/assets/ \
+            --delete \
+            --sse AES256 \
+            --cache-control "public,max-age=31536000,immutable" \
+            --region ${{ env.AWS_REGION }}
+
+      # ============================================================
+      # 9. UPLOAD index.html SEPARATELY
+      #
+      # index.html always keeps the same filename.
+      # It points to the latest hashed JS/CSS.
+      #
+      # Therefore we explicitly upload it with no-cache headers.
+      # ============================================================
+      - name: Upload index.html to S3
+        run: |
+          set -e
+
+          aws s3 cp \
+            dist/index.html \
+            s3://${{ vars.S3_BUCKET }}/frontend/index.html \
+            --sse AES256 \
+            --cache-control "no-cache,no-store,must-revalidate" \
+            --content-type "text/html" \
+            --region ${{ env.AWS_REGION }}
+
+      # ============================================================
+      # 10. UPLOAD ANY OTHER ROOT BUILD FILES
+      #
+      # Example:
+      # favicon
+      # images
+      # manifest files
+      #
+      # Assets and index.html are excluded because they were handled
+      # separately above.
+      # ============================================================
+      - name: Upload remaining frontend files to S3
+        run: |
+          set -e
+
+          aws s3 sync \
+            dist/ \
+            s3://${{ vars.S3_BUCKET }}/frontend/ \
+            --delete \
+            --sse AES256 \
+            --exclude "assets/*" \
+            --exclude "index.html" \
+            --region ${{ env.AWS_REGION }}
+
+      # ============================================================
+      # 11. VERIFY S3 CONTENT
+      # ============================================================
+      - name: Verify frontend files in S3
+        run: |
+          set -e
+
+          echo "=== S3 frontend root ==="
+          aws s3 ls \
+            s3://${{ vars.S3_BUCKET }}/frontend/ \
+            --region ${{ env.AWS_REGION }}
+
+          echo "=== S3 assets ==="
+          aws s3 ls \
+            s3://${{ vars.S3_BUCKET }}/frontend/assets/ \
+            --region ${{ env.AWS_REGION }} | head -50
+
+          echo "=== Download latest S3 index.html for verification ==="
+          aws s3 cp \
+            s3://${{ vars.S3_BUCKET }}/frontend/index.html \
+            /tmp/latest-index.html \
+            --region ${{ env.AWS_REGION }}
+
+          echo "=== Assets referenced by latest S3 index.html ==="
+          grep -oE '/assets/[^"]+\.(js|css)' /tmp/latest-index.html || true
+
+      # ============================================================
+      # 12. CREATE NGINX CONFIG
+      # ============================================================
       - name: Create and upload Nginx config
         env:
           BACKEND_IP: ${{ secrets.BACKEND_IP }}
         run: |
+          set -e
+
           cat > univulner-frontend.conf <<EOF
           server {
               listen 80;
@@ -82,87 +214,210 @@ jobs:
               root /var/www/frontend;
               index index.html;
 
+              # ----------------------------------------------------
+              # index.html
+              #
+              # Never aggressively cache the SPA entry point.
+              # It must always reference the latest Vite asset hashes.
+              # ----------------------------------------------------
+              location = /index.html {
+                  add_header Cache-Control "no-cache, no-store, must-revalidate";
+                  add_header Pragma "no-cache";
+                  add_header Expires "0";
+              }
+
+              # ----------------------------------------------------
+              # Vite hashed assets
+              #
+              # Safe to cache because filename changes whenever
+              # the content changes.
+              # ----------------------------------------------------
+              location /assets/ {
+                  expires 1y;
+                  add_header Cache-Control "public, immutable";
+                  try_files \$uri =404;
+              }
+
+              # ----------------------------------------------------
+              # React SPA routing
+              # ----------------------------------------------------
               location / {
                   try_files \$uri \$uri/ /index.html;
               }
 
+              # ----------------------------------------------------
+              # Dashboard API
+              # ----------------------------------------------------
               location ^~ /dashboard/ {
                   proxy_pass http://${BACKEND_IP}:8000/dashboard/;
                   proxy_http_version 1.1;
+
                   proxy_set_header Host \$host;
                   proxy_set_header X-Real-IP \$remote_addr;
                   proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
                   proxy_set_header X-Forwarded-Proto \$scheme;
+
                   proxy_connect_timeout 30s;
                   proxy_read_timeout 60s;
               }
 
+              # ----------------------------------------------------
+              # Search API
+              # ----------------------------------------------------
               location ^~ /search/ {
                   proxy_pass http://${BACKEND_IP}:8000/search/;
                   proxy_http_version 1.1;
+
                   proxy_set_header Host \$host;
                   proxy_set_header X-Real-IP \$remote_addr;
                   proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
                   proxy_set_header X-Forwarded-Proto \$scheme;
+
+                  proxy_connect_timeout 30s;
+                  proxy_read_timeout 60s;
               }
 
+              # ----------------------------------------------------
+              # General /api routes
+              #
+              # This also covers:
+              #
+              # /api/chatbot/query
+              # /api/chatbot/health
+              # /api/inventory/*
+              # ----------------------------------------------------
               location ^~ /api/ {
                   proxy_pass http://${BACKEND_IP}:8000/api/;
                   proxy_http_version 1.1;
+
                   proxy_set_header Host \$host;
                   proxy_set_header X-Real-IP \$remote_addr;
                   proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
                   proxy_set_header X-Forwarded-Proto \$scheme;
+
+                  proxy_connect_timeout 30s;
+                  proxy_read_timeout 90s;
               }
 
+              # ----------------------------------------------------
+              # CVE API
+              # ----------------------------------------------------
               location ^~ /cve/ {
                   proxy_pass http://${BACKEND_IP}:8000/cve/;
                   proxy_http_version 1.1;
+
                   proxy_set_header Host \$host;
                   proxy_set_header X-Real-IP \$remote_addr;
                   proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
                   proxy_set_header X-Forwarded-Proto \$scheme;
+
+                  proxy_connect_timeout 30s;
+                  proxy_read_timeout 60s;
               }
 
+              # ----------------------------------------------------
+              # Export API
+              # ----------------------------------------------------
               location ^~ /export/ {
                   proxy_pass http://${BACKEND_IP}:8000/export/;
                   proxy_http_version 1.1;
+
                   proxy_set_header Host \$host;
                   proxy_set_header X-Real-IP \$remote_addr;
                   proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
                   proxy_set_header X-Forwarded-Proto \$scheme;
+
+                  proxy_connect_timeout 30s;
+                  proxy_read_timeout 90s;
               }
 
+              # ----------------------------------------------------
+              # Block hidden files
+              # ----------------------------------------------------
               location ~ /\. {
                   deny all;
               }
           }
           EOF
 
-          aws s3 cp univulner-frontend.conf \
+          echo "=== Generated Nginx configuration ==="
+          cat univulner-frontend.conf
+
+          aws s3 cp \
+            univulner-frontend.conf \
             s3://${{ vars.S3_BUCKET }}/config/univulner-frontend.conf \
-            --sse AES256
+            --sse AES256 \
+            --region ${{ env.AWS_REGION }}
 
           rm -f univulner-frontend.conf
 
+      # ============================================================
+      # 13. DEPLOY TO EC2 THROUGH SYSTEMS MANAGER
+      # ============================================================
       - name: Deploy to EC2 via SSM
         run: |
+          set -e
+
           cat > ssm-params.json <<'JSON'
           {
             "commands": [
               "set -e",
-              "aws s3 sync s3://${{ vars.S3_BUCKET }}/frontend/ /var/www/frontend/ --delete --region ${{ env.AWS_REGION }}",
+
+              "echo '=== UniVulner frontend deployment started ==='",
+
+              "echo '=== Current index.html checksum ==='",
+              "if [ -f /var/www/frontend/index.html ]; then sha256sum /var/www/frontend/index.html; else echo 'No existing index.html'; fi",
+
+              "echo '=== Syncing frontend from S3 ==='",
+              "aws s3 sync s3://${{ vars.S3_BUCKET }}/frontend/ /var/www/frontend/ --delete --exact-timestamps --region ${{ env.AWS_REGION }}",
+
+              "echo '=== Force-refreshing index.html ==='",
+              "aws s3 cp s3://${{ vars.S3_BUCKET }}/frontend/index.html /var/www/frontend/index.html --region ${{ env.AWS_REGION }}",
+
+              "echo '=== New index.html checksum ==='",
+              "sha256sum /var/www/frontend/index.html",
+
+              "echo '=== Assets referenced by deployed index.html ==='",
+              "grep -oE '/assets/[^\\\" ]+\\.(js|css)' /var/www/frontend/index.html || true",
+
+              "echo '=== Validating deployed assets ==='",
+              "for asset in $(grep -oE '/assets/[^\\\" ]+\\.(js|css)' /var/www/frontend/index.html); do if [ -f \"/var/www/frontend${asset}\" ]; then echo \"OK: $asset\"; else echo \"MISSING ASSET: $asset\"; exit 1; fi; done",
+
+              "echo '=== Detecting Nginx user ==='",
               "NGINX_USER=$(ps -eo user,comm | awk '$2==\"nginx\"{print $1; exit}')",
+
               "if ! id \"$NGINX_USER\" >/dev/null 2>&1; then if id nginx >/dev/null 2>&1; then NGINX_USER=nginx; elif id www-data >/dev/null 2>&1; then NGINX_USER=www-data; else NGINX_USER=root; fi; fi",
+
+              "echo \"Nginx user: $NGINX_USER\"",
+
+              "echo '=== Fixing frontend ownership ==='",
               "chown -R $NGINX_USER:$NGINX_USER /var/www/frontend/",
-              "chmod -R 755 /var/www/frontend/",
+
+              "echo '=== Fixing frontend permissions ==='",
+              "find /var/www/frontend -type d -exec chmod 755 {} \\;",
+              "find /var/www/frontend -type f -exec chmod 644 {} \\;",
+
+              "echo '=== Updating Nginx configuration ==='",
               "aws s3 cp s3://${{ vars.S3_BUCKET }}/config/univulner-frontend.conf /etc/nginx/conf.d/univulner-frontend.conf --region ${{ env.AWS_REGION }}",
+
               "rm -f /etc/nginx/conf.d/proxy.conf",
               "rm -f /etc/nginx/conf.d/default.conf",
               "rm -f /etc/nginx/conf.d/default.conf.disabled",
               "rm -f /etc/nginx/sites-enabled/default",
+
+              "echo '=== Testing Nginx configuration ==='",
               "nginx -t",
-              "systemctl is-active --quiet nginx && systemctl reload nginx || systemctl start nginx"
+
+              "echo '=== Reloading Nginx ==='",
+              "systemctl is-active --quiet nginx && systemctl reload nginx || systemctl start nginx",
+
+              "echo '=== Final frontend directory ==='",
+              "ls -lah /var/www/frontend/",
+
+              "echo '=== Final assets directory ==='",
+              "ls -lah /var/www/frontend/assets/ | head -50",
+
+              "echo '=== UniVulner frontend deployment completed successfully ==='"
             ]
           }
           JSON
@@ -175,7 +430,10 @@ jobs:
             --query "Command.CommandId" \
             --output text)
 
+          echo "SSM Command ID: $COMMAND_ID"
+
           for i in {1..36}; do
+
             STATUS=$(aws ssm get-command-invocation \
               --command-id "$COMMAND_ID" \
               --instance-id "${{ vars.EC2_INSTANCE_ID }}" \
@@ -183,21 +441,48 @@ jobs:
               --query "Status" \
               --output text 2>/dev/null || echo "Pending")
 
-            echo "[$i] Status: $STATUS"
+            echo "[$i] Deployment status: $STATUS"
 
             if [ "$STATUS" = "Success" ]; then
+
+              echo "=== Deployment successful ==="
+
+              aws ssm get-command-invocation \
+                --command-id "$COMMAND_ID" \
+                --instance-id "${{ vars.EC2_INSTANCE_ID }}" \
+                --region ${{ env.AWS_REGION }} \
+                --query "StandardOutputContent" \
+                --output text
+
               exit 0
-            elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ] || [ "$STATUS" = "TimedOut" ]; then
+
+            elif [ "$STATUS" = "Failed" ] || \
+                 [ "$STATUS" = "Cancelled" ] || \
+                 [ "$STATUS" = "TimedOut" ]; then
+
+              echo "=== Deployment failed ==="
+
+              echo "=== Standard output ==="
+              aws ssm get-command-invocation \
+                --command-id "$COMMAND_ID" \
+                --instance-id "${{ vars.EC2_INSTANCE_ID }}" \
+                --region ${{ env.AWS_REGION }} \
+                --query "StandardOutputContent" \
+                --output text || true
+
+              echo "=== Standard error ==="
               aws ssm get-command-invocation \
                 --command-id "$COMMAND_ID" \
                 --instance-id "${{ vars.EC2_INSTANCE_ID }}" \
                 --region ${{ env.AWS_REGION }} \
                 --query "StandardErrorContent" \
-                --output text
+                --output text || true
+
               exit 1
             fi
 
             sleep 5
           done
 
+          echo "Deployment did not complete within expected time."
           exit 1
