@@ -309,7 +309,7 @@ export default function Dashboard() {
       <div>
         <h1 className="text-2xl font-bold text-slate-100">Dashboard</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Threat Intelligence Platform · data updated periodically
+          UniVulner: self-hosted Vulnerability Intelligence and Organizational Risk Assessment Platform.
         </p>
       </div>
 
@@ -391,10 +391,7 @@ export default function Dashboard() {
               </div>
               <div className="text-center">
                 <p className="text-xs text-slate-500 font-medium">No trend data yet</p>
-                <p className="text-[10px] text-slate-700 mt-1">
-                  Requires <code className="text-slate-500">/dashboard/trend</code> endpoint<br />
-                  or CVEs with <code className="text-slate-500">published_date</code> field
-                </p>
+                
               </div>
             </div>
           ) : (
@@ -448,11 +445,7 @@ export default function Dashboard() {
                       ? "No KEV-flagged CVEs in recent data"
                       : "No CVE data loaded"}
                   </p>
-                  <p className="text-[10px] text-slate-700 mt-1">
-                    {recentVulns.length > 0
-                      ? <>Requires <code className="text-slate-500">kev_status: true</code> field<br />from <code className="text-slate-500">/dashboard/recent-cves</code> endpoint</>
-                      : "Check backend connection"}
-                  </p>
+                  
                 </div>
               </div>
             ) : (
@@ -488,10 +481,7 @@ export default function Dashboard() {
                 </div>
                 <div className="text-center">
                   <p className="text-xs text-slate-500 font-medium">No threat scores available</p>
-                  <p className="text-[10px] text-slate-700 mt-1">
-                    Requires <code className="text-slate-500">threat_score</code> field<br />
-                    from <code className="text-slate-500">/dashboard/recent-cves</code> endpoint
-                  </p>
+                  
                 </div>
                 {/* Still show the empty bands so the layout looks right */}
                 <div className="w-full space-y-2 mt-2">

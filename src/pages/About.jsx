@@ -142,18 +142,15 @@ export default function About() {
           <div>
             <h1 className="text-3xl font-bold text-slate-100">UniVulner</h1>
             <p className="text-sm text-cyan-400 mt-0.5 font-medium">
-              UniVulner: self-hosted Vulnerability Intelligence and Organizational Risk Assessment Platform.
+              Self-hosted Vulnerability Intelligence and Organizational Risk Assessment Platform.
             </p>
           </div>
         </div>
 
         <p className="text-sm text-slate-400 leading-relaxed max-w-3xl">
-          The primary objective of the project is to help organizations identify which vulnerabilities actually affect their software inventory and prioritize remediation based on multiple threat intelligence sources.
-          Traditional vulnerability intelligence platforms provide information about millions of CVEs, but organizations often struggle to determine which vulnerabilities are relevant to their own infrastructure.
-          To solve this problem, our platform first collects and continuously synchronizes vulnerability intelligence from multiple public sources such as MITRE, NVD, EPSS, CISA KEV, ExploitDB, and GitHub Proof-of-Concept repositories.
-          All of this heterogeneous data is normalized into a unified vulnerability model and indexed in OpenSearch.
-          The platform also accepts an organization's Software Bill of Materials (SBOM) or software inventory, correlates installed products and package versions with known vulnerabilities, enriches the matched vulnerabilities using threat intelligence, calculates a contextual priority score, and finally generates a prioritized assessment report.
-          An integrated LLM-based AI Assistant enables natural language vulnerability search, CVE explanation, remediation recommendations, and threat intelligence summarization, helping security teams analyze and prioritize vulnerabilities more efficiently.  
+          Designed and implemented a Vulnerability Intelligence and Threat Monitoring Platform that consolidates vulnerability intelligence from multiple cybersecurity repositories into a unified knowledge base. 
+          The platform performs automated collection, normalization, enrichment, exploit correlation, threat scoring, and indexing to deliver searchable vulnerability intelligence, risk analytics, and software inventory assessment. 
+          An integrated LLM-based AI Assistant enables natural language vulnerability search, CVE explanation, remediation recommendations, and threat intelligence summarization, helping security teams analyze and prioritize vulnerabilities more efficiently.   
         </p>
 
         <div className="flex flex-wrap gap-2 mt-5">
